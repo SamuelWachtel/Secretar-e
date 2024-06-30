@@ -10,15 +10,6 @@ namespace Secretare.LoggingIn
 
         public void SignInNewUser()
         {
-            var allUsernames = new List<string> { };
-
-            //get all usernames from the database and pass them to allUsernames
-
-            var allEmails = new List<string> { };
-
-            //get all emails from the database and pass them to allEmails
-
-
             var signInIsValid = false;
             while (!signInIsValid)
             {
@@ -43,9 +34,9 @@ namespace Secretare.LoggingIn
                     Console.WriteLine("Passwords do not match");
                     signInIsValid = false;
                 }
-                else if (!credentialsAvailable)
+                else if (!credentialsAvailable.ResultBool)
                 {
-                    Console.WriteLine("Username or email already in use.");
+                    Console.WriteLine(credentialsAvailable.ResultMessage);
                     signInIsValid = false;
                 }
                 else if (password.Length < 10)
@@ -72,23 +63,19 @@ namespace Secretare.LoggingIn
                 }
             }
         }
-        ValidResponse VerifyAvailability(string usernameInput, string passwordInput)
+        ValidResponse VerifyAvailability(string usernameInput, string emailInput)
         {
-            List<Account> Usernames = new List<Account>();
-            SqlConnectionStringBuilder csb = new SqlConnectionStringBuilder();
-            csb.DataSource = @"(localDB)\MSSQLSERVER02";
-            csb.InitialCatalog = "Secretary";
-            csb.IntegratedSecurity = true;
-            var connectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Users\samuel.wachtel\source\repos\Secretar.io\Secretare\SecretaryDB.mdf;Integrated Security=True";
+            string connectionString = "Server=db.dw154.webglobe.com;Database=program_db;User=samuel_wachtel;Password=zuwxy9-vezveP-vuwcyr;";
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 try
                 {
                     using (connection)
                     {
-                        string query = "SELECT Username, Email FROM SecretaryDB.dbo.Users WHERE Username = @Username OR Username = @Email";
+                        string query = "SELECT Username, Email FROM SecretaryDB.dbo.Users WHERE Username = @Username OR Email = @Email";
                         using (SqlCommand sqlQuery = new SqlCommand(query, connection))
                         {
+                            connection.Open();
                             sqlQuery.Parameters.Add("@Username", System.Data.SqlDbType.VarChar, 18).Value = usernameInput;
                             sqlQuery.Parameters.Add("@Email", System.Data.SqlDbType.VarChar, 50).Value = usernameInput;
                             connection.Open();
@@ -96,13 +83,30 @@ namespace Secretare.LoggingIn
                             {
                                 if (reader.Read())
                                 {
-
                                     var storedUsername = reader["UserId"].ToString();
                                     var storedEmail = reader["UserId"].ToString();
-                                    if (storedUsername == usernameInput)
+                                    if (storedUsername != usernameInput && storedEmail == emailInput)
                                     {
-
-                                        return resp;
+                                        ValidResponse response = new ValidResponse("Email is already used.", false);
+                                        return response;
+                                    }
+                                    else if (storedEmail != emailInput && storedUsername == usernameInput)
+                                    {
+                                        ValidResponse response = new ValidResponse("Username is already used.", false);
+                                        return response;
+                                    }
+                                    else if (storedUsername != usernameInput && storedEmail != emailInput)
+                                    {
+                                        ValidResponse response = new ValidResponse("ok", true);
+                                        return response;
+                                    }
+                                    else if (storedUsername == usernameInput && storedEmail == emailInput)
+                                    {
+                                        
+                                    }
+                                    {
+                                        ValidResponse response = new ValidResponse("Username and email are already used.", false);
+                                        return response;
                                     }
                                 }
                             }
@@ -111,9 +115,11 @@ namespace Secretare.LoggingIn
                 }
                 catch (Exception ex)
                 {
-                    return "Login failed";
+                    ValidResponse errorResponse = new ValidResponse("An error occured. Please try again later.", false);
+                    return errorResponse;
                 }
-                return "Login failed";
+                ValidResponse errorResponse2 = new ValidResponse("An error occured. Please try again later.", false);
+                return errorResponse2;
             }
         }
         public class ValidResponse
